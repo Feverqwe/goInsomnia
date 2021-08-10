@@ -17,69 +17,37 @@ var powerSetRequest = kernel32.NewProc("PowerSetRequest")
 var powerClearRequest = kernel32.NewProc("PowerClearRequest")
 
 type PowerControl struct {
-	IsDisplay   bool
-	IsExecuting bool
-	IsSystem    bool
-	IsAwayMode  bool
-	ctx         uintptr
+	State map[uintptr]bool
+	ctx   uintptr
 }
 
 func (self *PowerControl) Executing(enabled bool) error {
-	var err error
-	if enabled != self.IsExecuting {
-		if enabled {
-			err = self.set(EXECUTING)
-		} else {
-			err = self.clear(EXECUTING)
-		}
-	}
-	if err == nil {
-		self.IsExecuting = enabled
-	}
-	return err
+	return self.change(EXECUTING, enabled)
 }
 
 func (self *PowerControl) Display(enabled bool) error {
-	var err error
-	if enabled != self.IsDisplay {
-		if enabled {
-			err = self.set(DISPLAY)
-		} else {
-			err = self.clear(DISPLAY)
-		}
-	}
-	if err == nil {
-		self.IsDisplay = enabled
-	}
-	return err
+	return self.change(DISPLAY, enabled)
 }
 
 func (self *PowerControl) System(enabled bool) error {
-	var err error
-	if enabled != self.IsSystem {
-		if enabled {
-			err = self.set(SYSTEM)
-		} else {
-			err = self.clear(SYSTEM)
-		}
-	}
-	if err == nil {
-		self.IsSystem = enabled
-	}
-	return err
+	return self.change(SYSTEM, enabled)
 }
 
-func (self *PowerControl) Awaymode(enabled bool) error {
+func (self *PowerControl) AwayMode(enabled bool) error {
+	return self.change(AWAYMODE, enabled)
+}
+
+func (self *PowerControl) change(reqType uintptr, enabled bool) error {
 	var err error
-	if enabled != self.IsAwayMode {
+	if enabled != self.State[reqType] {
 		if enabled {
-			err = self.set(AWAYMODE)
+			err = self.set(reqType)
 		} else {
-			err = self.clear(AWAYMODE)
+			err = self.clear(reqType)
 		}
 	}
 	if err == nil {
-		self.IsAwayMode = enabled
+		self.State[reqType] = enabled
 	}
 	return err
 }
@@ -100,16 +68,13 @@ func (self *PowerControl) clear(reqType uintptr) error {
 	return nil
 }
 
-type ULONG uint32
-type DWORD uint32
-
 type SimpleReasonString struct {
 	SimpleReasonString *uint16
 }
 
 type REASON_CONTEXT struct {
-	Version ULONG
-	Flags   DWORD
+	Version uint32
+	Flags   uint32
 	Reason  SimpleReasonString
 }
 
@@ -127,6 +92,7 @@ func GetPowerControl() *PowerControl {
 
 	powerControl := &PowerControl{}
 	powerControl.ctx = pCtx
+	powerControl.State = map[uintptr]bool{}
 
 	return powerControl
 }

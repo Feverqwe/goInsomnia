@@ -7,5 +7,5 @@ require (
 	github.com/getlantern/hidden v0.0.0-20201229170000-e66e7f878730 // indirect
 	github.com/getlantern/ops v0.0.0-20200403153110-8476b16edcd6 // indirect
 	github.com/getlantern/systray v1.1.0
-	golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e
 )

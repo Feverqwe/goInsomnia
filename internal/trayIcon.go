@@ -1,14 +1,14 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/getlantern/systray"
 	"goInsomnia/asserts"
-	"os"
 )
 
 var icon []byte
 
-func TrayIcon(state *State, callChan chan string) {
+func TrayIcon(pc *PowerControl) {
 	if icon == nil {
 		data, err := asserts.Asset("icon.ico")
 		if err != nil {
@@ -22,59 +22,67 @@ func TrayIcon(state *State, callChan chan string) {
 		systray.SetTitle("GoInsomnia")
 		systray.SetTooltip("GoInsomnia")
 
-		mLockExecuting := systray.AddMenuItemCheckbox("Executing", "Executing", state.Executing)
-		mLockDisplay := systray.AddMenuItemCheckbox("Display", "Display", state.Display)
-		mLockSystem := systray.AddMenuItemCheckbox("System", "System", state.System)
-		mLockAwayMode := systray.AddMenuItemCheckbox("AwayMode", "AwayMode", state.AwayMode)
+		reqTypeItem := map[uintptr]*systray.MenuItem{}
+
+		mLockExecuting := systray.AddMenuItemCheckbox("Executing", "Executing", false)
+		reqTypeItem[EXECUTING] = mLockExecuting
+
+		mLockDisplay := systray.AddMenuItemCheckbox("Display", "Display", false)
+		reqTypeItem[DISPLAY] = mLockDisplay
+
+		mLockSystem := systray.AddMenuItemCheckbox("System", "System", false)
+		reqTypeItem[SYSTEM] = mLockSystem
+
+		mLockAwayMode := systray.AddMenuItemCheckbox("AwayMode", "AwayMode", false)
+		reqTypeItem[AWAYMODE] = mLockAwayMode
 
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
-		go func() {
-			for {
-				select {
-				case <-mQuit.ClickedCh:
-					systray.Quit()
-					os.Exit(0)
-				case <-mLockExecuting.ClickedCh:
-					state.Executing = !state.Executing
-					if state.Executing {
-						mLockExecuting.Check()
+		syncMenu := func() {
+			for reqType, item := range reqTypeItem {
+				enabled := pc.State[reqType]
+				if enabled != item.Checked() {
+					if enabled {
+						item.Check()
 					} else {
-						mLockExecuting.Uncheck()
+						item.Uncheck()
 					}
-					callChan <- "sync"
-				case <-mLockDisplay.ClickedCh:
-					state.Display = !state.Display
-					if state.Display {
-						mLockDisplay.Check()
-					} else {
-						mLockDisplay.Uncheck()
-					}
-					callChan <- "sync"
-				case <-mLockSystem.ClickedCh:
-					state.System = !state.System
-					if state.System {
-						mLockSystem.Check()
-					} else {
-						mLockSystem.Uncheck()
-					}
-					callChan <- "sync"
-				case <-mLockAwayMode.ClickedCh:
-					state.AwayMode = !state.AwayMode
-					if state.AwayMode {
-						mLockAwayMode.Check()
-					} else {
-						mLockAwayMode.Uncheck()
-					}
-					callChan <- "sync"
 				}
 			}
+		}
+
+		onClick := func(item *systray.MenuItem, cb func(enabled bool) error) {
+			enabled := !item.Checked()
+			if err := cb(enabled); err == nil {
+				syncMenu()
+			} else {
+				fmt.Println("Change state error", err)
+			}
+		}
+
+		go func() {
+			onClick(mLockExecuting, pc.Executing)
 		}()
+
+		for {
+			select {
+			case <-mQuit.ClickedCh:
+				systray.Quit()
+			case <-mLockExecuting.ClickedCh:
+				onClick(mLockExecuting, pc.Executing)
+			case <-mLockDisplay.ClickedCh:
+				onClick(mLockDisplay, pc.Display)
+			case <-mLockSystem.ClickedCh:
+				onClick(mLockSystem, pc.System)
+			case <-mLockAwayMode.ClickedCh:
+				onClick(mLockAwayMode, pc.AwayMode)
+			}
+		}
 	}
 
-	onExit := func() {}
+	onExit := func() {
 
-	go func() {
-		systray.Run(onRun, onExit)
-	}()
+	}
+
+	systray.Run(onRun, onExit)
 }
