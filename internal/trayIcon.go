@@ -3,14 +3,14 @@ package internal
 import (
 	"fmt"
 	"github.com/getlantern/systray"
-	"goInsomnia/asserts"
+	"goInsomnia/assets"
 )
 
 var icon []byte
 
 func TrayIcon(pc *PowerControl) {
 	if icon == nil {
-		data, err := asserts.Asset("icon.ico")
+		data, err := assets.Asset("icon.ico")
 		if err != nil {
 			panic(err)
 		}

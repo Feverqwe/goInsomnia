@@ -1,7 +1,7 @@
 // Code generated for package main by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // icon.ico
-package asserts
+package assets
 
 import (
 	"bytes"
