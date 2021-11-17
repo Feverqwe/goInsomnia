@@ -2,8 +2,10 @@ package internal
 
 import (
 	"fmt"
-	"github.com/getlantern/systray"
 	"goInsomnia/assets"
+	"runtime"
+
+	"github.com/getlantern/systray"
 )
 
 var icon []byte
@@ -19,13 +21,15 @@ func TrayIcon(pc *PowerControl) {
 
 	onRun := func() {
 		systray.SetTemplateIcon(icon, icon)
-		systray.SetTitle("GoInsomnia")
 		systray.SetTooltip("GoInsomnia")
 
 		reqTypeItem := map[uintptr]*systray.MenuItem{}
 
-		mLockExecuting := systray.AddMenuItemCheckbox("Executing", "Executing", false)
-		reqTypeItem[EXECUTING] = mLockExecuting
+		var mLockExecuting *systray.MenuItem = nil
+		if runtime.GOOS == "windows" {
+			mLockExecuting = systray.AddMenuItemCheckbox("Executing", "Executing", false)
+			reqTypeItem[EXECUTING] = mLockExecuting
+		}
 
 		mLockDisplay := systray.AddMenuItemCheckbox("Display", "Display", false)
 		reqTypeItem[DISPLAY] = mLockDisplay
@@ -33,8 +37,11 @@ func TrayIcon(pc *PowerControl) {
 		mLockSystem := systray.AddMenuItemCheckbox("System", "System", false)
 		reqTypeItem[SYSTEM] = mLockSystem
 
-		mLockAwayMode := systray.AddMenuItemCheckbox("AwayMode", "AwayMode", false)
-		reqTypeItem[AWAYMODE] = mLockAwayMode
+		var mLockAwayMode *systray.MenuItem = nil
+		if runtime.GOOS == "windows" {
+			mLockAwayMode = systray.AddMenuItemCheckbox("AwayMode", "AwayMode", false)
+			reqTypeItem[AWAYMODE] = mLockAwayMode
+		}
 
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
@@ -61,22 +68,37 @@ func TrayIcon(pc *PowerControl) {
 		}
 
 		go func() {
-			onClick(mLockExecuting, pc.Executing)
+			if runtime.GOOS == "windows" {
+				onClick(mLockExecuting, pc.Executing)
+			} else {
+				onClick(mLockSystem, pc.System)
+			}
 		}()
 
-		for {
-			select {
-			case <-mQuit.ClickedCh:
-				systray.Quit()
-			case <-mLockExecuting.ClickedCh:
-				onClick(mLockExecuting, pc.Executing)
-			case <-mLockDisplay.ClickedCh:
-				onClick(mLockDisplay, pc.Display)
-			case <-mLockSystem.ClickedCh:
-				onClick(mLockSystem, pc.System)
-			case <-mLockAwayMode.ClickedCh:
-				onClick(mLockAwayMode, pc.AwayMode)
+		go func() {
+			for {
+				select {
+				case <-mQuit.ClickedCh:
+					systray.Quit()
+				case <-mLockDisplay.ClickedCh:
+					onClick(mLockDisplay, pc.Display)
+				case <-mLockSystem.ClickedCh:
+					onClick(mLockSystem, pc.System)
+				}
 			}
+		}()
+
+		if runtime.GOOS == "windows" {
+			go func() {
+				for {
+					select {
+					case <-mLockExecuting.ClickedCh:
+						onClick(mLockExecuting, pc.Executing)
+					case <-mLockAwayMode.ClickedCh:
+						onClick(mLockAwayMode, pc.AwayMode)
+					}
+				}
+			}()
 		}
 	}
 
