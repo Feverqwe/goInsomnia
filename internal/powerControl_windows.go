@@ -87,7 +87,7 @@ func GetPowerControl() *PowerControl {
 		id:      3,
 		title:   "System",
 		tooltip: "The system continues to run instead of entering sleep after a period of user inactivity.",
-		reqType: uintptr(0x3),
+		reqType: uintptr(0x1),
 	})
 	types = append(types, &PowerType{
 		id:      4,
