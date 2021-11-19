@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"goInsomnia/assets"
 	"reflect"
-	"runtime"
 
 	"github.com/getlantern/systray"
 )
@@ -62,11 +61,7 @@ func TrayIcon(pc *PowerControl) {
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
 		go func() {
-			if runtime.GOOS == "windows" {
-				onClick(1)
-			} else {
-				onClick(2)
-			}
+			onClick(1)
 		}()
 
 		go func() {
