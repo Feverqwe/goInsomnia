@@ -65,7 +65,7 @@ func TrayIcon(pc *PowerControl) {
 			if runtime.GOOS == "windows" {
 				onClick(1)
 			} else {
-				onClick(3)
+				onClick(2)
 			}
 		}()
 
