@@ -6,74 +6,100 @@ import (
 	"github.com/caseymrm/go-caffeinate"
 )
 
-const SYSTEM = uintptr(0x1)
-const EXECUTING = uintptr(0x3)
-const AWAYMODE = uintptr(0x2)
-const DISPLAY = uintptr(0x1 & 0x4)
+type PowerType struct {
+	id      int
+	title   string
+	tooltip string
+	state   bool
+}
 
 type PowerControl struct {
-	State map[uintptr]bool
-	ch    chan int
+	ch     chan int
+	types  []*PowerType
+	idType map[int]*PowerType
 }
 
-func (self *PowerControl) Executing(enabled bool) error {
-	return self.change(EXECUTING, false)
-}
-
-func (self *PowerControl) Display(enabled bool) error {
-	return self.change(DISPLAY, enabled)
-}
-
-func (self *PowerControl) System(enabled bool) error {
-	return self.change(SYSTEM, enabled)
-}
-
-func (self *PowerControl) AwayMode(enabled bool) error {
-	return self.change(AWAYMODE, false)
-}
-
-func (self *PowerControl) change(reqType uintptr, enabled bool) error {
-	self.State[reqType] = enabled
+func (self *PowerControl) setState(id int, state bool) error {
+	powerType := self.idType[id]
+	powerType.state = state
 	self.ch <- 1
 	return nil
 }
 
 func GetPowerControl() *PowerControl {
-	powerControl := &PowerControl{
-		ch:    make(chan int),
-		State: map[uintptr]bool{},
+	var types []*PowerType
+	types = append(types, &PowerType{
+		id:      1,
+		title:   "Display",
+		tooltip: "Prevent the display from sleeping.",
+	})
+	types = append(types, &PowerType{
+		id:      2,
+		title:   "Idle System",
+		tooltip: "Prevent the system from idle sleeping.",
+	})
+	types = append(types, &PowerType{
+		id:      3,
+		title:   "Idle Disk",
+		tooltip: "Prevent the disk from idle sleeping.",
+	})
+	types = append(types, &PowerType{
+		id:      4,
+		title:   "System",
+		tooltip: "Prevent the system from sleeping. Valid only on AC power.",
+	})
+
+	idType := make(map[int]*PowerType)
+	for _, powerType := range types {
+		idType[powerType.id] = powerType
 	}
+
+	powerControl := &PowerControl{
+		ch:     make(chan int),
+		types:  types,
+		idType: idType,
+	}
+
 	var c *caffeinate.Caffeinate
 	go func() {
 		for {
 			<-powerControl.ch
 			log.Println("caffeinate: changes")
 			someone := false
-			system := false
 			display := false
-			for key, value := range powerControl.State {
+			idleSystem := false
+			idleDisk := false
+			system := false
+			for _, powerType := range powerControl.types {
+				value := powerType.state
 				if value {
 					someone = true
 				}
-				if key == SYSTEM {
-					system = value
-				}
-				if key == DISPLAY {
+				switch powerType.id {
+				case 1:
 					display = value
+				case 2:
+					idleSystem = value
+				case 3:
+					idleDisk = value
+				case 4:
+					system = value
 				}
 			}
 
 			if c != nil && c.Running() {
 				log.Println("caffeinate: stop")
 				err := c.Stop()
-				if err != nil {
-					log.Println("caffeinate: stop error", err)
+				if err != nil && err.Error() != "signal: killed" {
+					log.Println("caffeinate: stop error", err.Error())
 				}
 			}
 			if someone {
 				c = &caffeinate.Caffeinate{
-					System:  system,
-					Display: display,
+					Display:    display,
+					IdleSystem: idleSystem,
+					IdleDisk:   idleDisk,
+					System:     system,
 				}
 				log.Println("caffeinate: start")
 				c.Start()

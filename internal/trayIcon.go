@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"goInsomnia/assets"
+	"reflect"
 	"runtime"
 
 	"github.com/getlantern/systray"
@@ -23,55 +24,48 @@ func TrayIcon(pc *PowerControl) {
 		systray.SetTemplateIcon(icon, icon)
 		systray.SetTooltip("GoInsomnia")
 
-		reqTypeItem := map[uintptr]*systray.MenuItem{}
-
-		var mLockExecuting *systray.MenuItem = nil
-		if runtime.GOOS == "windows" {
-			mLockExecuting = systray.AddMenuItemCheckbox("Executing", "Executing", false)
-			reqTypeItem[EXECUTING] = mLockExecuting
-		}
-
-		mLockDisplay := systray.AddMenuItemCheckbox("Display", "Display", false)
-		reqTypeItem[DISPLAY] = mLockDisplay
-
-		mLockSystem := systray.AddMenuItemCheckbox("System", "System", false)
-		reqTypeItem[SYSTEM] = mLockSystem
-
-		var mLockAwayMode *systray.MenuItem = nil
-		if runtime.GOOS == "windows" {
-			mLockAwayMode = systray.AddMenuItemCheckbox("AwayMode", "AwayMode", false)
-			reqTypeItem[AWAYMODE] = mLockAwayMode
-		}
-
-		mQuit := systray.AddMenuItem("Quit", "Quit")
+		var mLockArr []*systray.MenuItem
+		var mLockChannels []reflect.SelectCase
 
 		syncMenu := func() {
-			for reqType, item := range reqTypeItem {
-				enabled := pc.State[reqType]
-				if enabled != item.Checked() {
+			for index, powerType := range pc.types {
+				menuItem := mLockArr[index]
+				enabled := powerType.state
+				if enabled != menuItem.Checked() {
 					if enabled {
-						item.Check()
+						menuItem.Check()
 					} else {
-						item.Uncheck()
+						menuItem.Uncheck()
 					}
 				}
 			}
 		}
 
-		onClick := func(item *systray.MenuItem, cb func(enabled bool) error) {
-			enabled := !item.Checked()
-			if err := cb(enabled); err == nil {
+		onClick := func(index int) {
+			menuItem := mLockArr[index]
+			powerType := pc.types[index]
+			state := !menuItem.Checked()
+			if err := pc.setState(powerType.id, state); err == nil {
 				syncMenu()
 			} else {
 				fmt.Println("Change state error", err)
 			}
 		}
 
+		for _, powerType := range pc.types {
+			mLock := systray.AddMenuItemCheckbox(powerType.title, powerType.tooltip, false)
+			mLockArr = append(mLockArr, mLock)
+			selectCase := reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mLock.ClickedCh)}
+			mLockChannels = append(mLockChannels, selectCase)
+		}
+
+		mQuit := systray.AddMenuItem("Quit", "Quit")
+
 		go func() {
 			if runtime.GOOS == "windows" {
-				onClick(mLockExecuting, pc.Executing)
+				onClick(1)
 			} else {
-				onClick(mLockSystem, pc.System)
+				onClick(3)
 			}
 		}()
 
@@ -80,26 +74,16 @@ func TrayIcon(pc *PowerControl) {
 				select {
 				case <-mQuit.ClickedCh:
 					systray.Quit()
-				case <-mLockDisplay.ClickedCh:
-					onClick(mLockDisplay, pc.Display)
-				case <-mLockSystem.ClickedCh:
-					onClick(mLockSystem, pc.System)
 				}
 			}
 		}()
 
-		if runtime.GOOS == "windows" {
-			go func() {
-				for {
-					select {
-					case <-mLockExecuting.ClickedCh:
-						onClick(mLockExecuting, pc.Executing)
-					case <-mLockAwayMode.ClickedCh:
-						onClick(mLockAwayMode, pc.AwayMode)
-					}
-				}
-			}()
-		}
+		go func() {
+			for {
+				index, _, _ := reflect.Select(mLockChannels)
+				onClick(index)
+			}
+		}()
 	}
 
 	onExit := func() {
