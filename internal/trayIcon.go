@@ -5,11 +5,14 @@ import (
 	"goInsomnia/assets"
 	"reflect"
 	"runtime"
+	"time"
 
 	"github.com/getlantern/systray"
 )
 
 var icon []byte
+
+var minutesPreset = []int{5, 10, 15, 30, 60, 120, 240, 360, 480}
 
 func TrayIcon(pc *PowerControl) {
 	if icon == nil {
@@ -26,6 +29,8 @@ func TrayIcon(pc *PowerControl) {
 
 		var mLockArr []*systray.MenuItem
 		var mLockChannels []reflect.SelectCase
+
+		var mMinutesChannels []reflect.SelectCase
 
 		syncMenu := func() {
 			for index, powerType := range pc.types {
@@ -52,12 +57,66 @@ func TrayIcon(pc *PowerControl) {
 			}
 		}
 
+		timerItem := systray.AddMenuItem("", "")
+		timerItem.Hide()
+
+		subConfig := systray.AddMenuItem("Turn off after...", "Turn off after...")
+
+		var timer *time.Timer
+		stopTimer := func() {
+			if timer != nil {
+				timer.Stop()
+			}
+		}
+		onTimer := func() {
+			for id, powerType := range pc.idType {
+				if powerType.state {
+					pc.setState(id, false)
+				}
+			}
+			syncMenu()
+			timerItem.Hide()
+			subConfig.Show()
+		}
+		setTimer := func(minutes int) {
+			stopTimer()
+			duration := time.Duration(minutes) * time.Minute
+			ct := time.Now()
+			ct = ct.Add(duration)
+			timer = time.AfterFunc(duration, onTimer)
+			timerItem.SetTitle("Until " + ct.Format("15:04"))
+		}
+
+		onTimerClick := func() {
+			stopTimer()
+			timerItem.Hide()
+			subConfig.Show()
+		}
+
+		onMinutesClick := func(index int) {
+			minutes := minutesPreset[index]
+			setTimer(minutes)
+			timerItem.Show()
+			subConfig.Hide()
+		}
+
+		for _, minutes := range minutesPreset {
+			title := formatMinutes(minutes)
+			mMinutes := subConfig.AddSubMenuItem(title, title)
+			selectCase := reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mMinutes.ClickedCh)}
+			mMinutesChannels = append(mMinutesChannels, selectCase)
+		}
+
+		systray.AddSeparator()
+
 		for _, powerType := range pc.types {
 			mLock := systray.AddMenuItemCheckbox(powerType.title, powerType.tooltip, false)
 			mLockArr = append(mLockArr, mLock)
 			selectCase := reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mLock.ClickedCh)}
 			mLockChannels = append(mLockChannels, selectCase)
 		}
+
+		systray.AddSeparator()
 
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
@@ -72,6 +131,8 @@ func TrayIcon(pc *PowerControl) {
 		go func() {
 			for {
 				select {
+				case <-timerItem.ClickedCh:
+					onTimerClick()
 				case <-mQuit.ClickedCh:
 					systray.Quit()
 				}
@@ -82,6 +143,13 @@ func TrayIcon(pc *PowerControl) {
 			for {
 				index, _, _ := reflect.Select(mLockChannels)
 				onClick(index)
+			}
+		}()
+
+		go func() {
+			for {
+				index, _, _ := reflect.Select(mMinutesChannels)
+				onMinutesClick(index)
 			}
 		}()
 	}
