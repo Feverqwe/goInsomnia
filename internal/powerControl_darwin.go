@@ -21,10 +21,10 @@ type PowerControl struct {
 	idType map[int]*PowerType
 }
 
-func (self *PowerControl) setState(id int, state bool) error {
-	powerType := self.idType[id]
+func (s *PowerControl) setState(id int, state bool) error {
+	powerType := s.idType[id]
 	powerType.state = state
-	self.ch <- 1
+	s.ch <- 1
 	return nil
 }
 

@@ -28,15 +28,15 @@ type PowerControl struct {
 	idType map[int]*PowerType
 }
 
-func (self *PowerControl) setState(id int, enabled bool) error {
-	powerType := self.idType[id]
+func (s *PowerControl) setState(id int, enabled bool) error {
+	powerType := s.idType[id]
 	var err error
 	if enabled != powerType.state {
 		reqType := powerType.reqType
 		if enabled {
-			err = self.set(reqType)
+			err = s.set(reqType)
 		} else {
-			err = self.clear(reqType)
+			err = s.clear(reqType)
 		}
 	}
 	if err == nil {
@@ -45,16 +45,16 @@ func (self *PowerControl) setState(id int, enabled bool) error {
 	return err
 }
 
-func (self *PowerControl) set(reqType uintptr) error {
-	_, errNum, status := powerSetRequest.Call(self.ctx, reqType)
+func (s *PowerControl) set(reqType uintptr) error {
+	_, errNum, status := powerSetRequest.Call(s.ctx, reqType)
 	if errNum != 0 {
 		return status
 	}
 	return nil
 }
 
-func (self *PowerControl) clear(reqType uintptr) error {
-	_, errNum, status := powerClearRequest.Call(self.ctx, reqType)
+func (s *PowerControl) clear(reqType uintptr) error {
+	_, errNum, status := powerClearRequest.Call(s.ctx, reqType)
 	if errNum != 0 {
 		return status
 	}
