@@ -11,6 +11,7 @@ import (
 )
 
 var icon []byte
+var disabledIcon []byte
 
 var minutesPreset = []int{5, 10, 15, 30, 60, 120, 240, 360, 480}
 
@@ -23,8 +24,16 @@ func TrayIcon(pc *PowerControl) {
 		icon = data
 	}
 
+	if disabledIcon == nil {
+		data, err := assets.Asset("disabled.ico")
+		if err != nil {
+			panic(err)
+		}
+		disabledIcon = data
+	}
+
 	onRun := func() {
-		systray.SetTemplateIcon(icon, icon)
+		systray.SetTemplateIcon(disabledIcon, disabledIcon)
 		systray.SetTooltip("GoInsomnia")
 
 		var mLockArr []*systray.MenuItem
@@ -33,9 +42,13 @@ func TrayIcon(pc *PowerControl) {
 		var mMinutesChannels []reflect.SelectCase
 
 		syncMenu := func() {
+			hasEnabled := false
 			for index, powerType := range pc.types {
 				menuItem := mLockArr[index]
 				enabled := powerType.state
+				if enabled {
+					hasEnabled = true
+				}
 				if enabled != menuItem.Checked() {
 					if enabled {
 						menuItem.Check()
@@ -43,6 +56,11 @@ func TrayIcon(pc *PowerControl) {
 						menuItem.Uncheck()
 					}
 				}
+			}
+			if hasEnabled {
+				systray.SetTemplateIcon(icon, icon)
+			} else {
+				systray.SetTemplateIcon(disabledIcon, disabledIcon)
 			}
 		}
 
