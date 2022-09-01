@@ -10,7 +10,7 @@ import (
 
 func ShowEntry(title string, text string, defaultValue string) (string, error) {
 	text, err := zenity.Entry(text,
-		zenity.Title(text),
+		zenity.Title(title),
 		zenity.EntryText(defaultValue),
 	)
 	if err != nil {
