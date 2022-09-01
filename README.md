@@ -18,17 +18,13 @@ go build -ldflags -H=windowsgui -trimpath -o goInsomnia.exe
 Build mac app
 ---
 ```
-go build -trimpath -o goInsomnia
-go get github.com/strosel/appify
-go install github.com/strosel/appify
-~/go/bin/appify -menubar -name goInsomnia -author "Anton V" -id com.rndnm.goinsomnia -icon ./assets/icon.icns goInsomnia
-rm ./goInsomnia.app/Contents/README
+./scripts/build.mac.sh
 ```
 
 Build resources with go-bindata
 ---
 ````
-go-bindata .\icon.ico
+./scripts/build.resources.sh
 ````
 
 File icon, use rsrc 
