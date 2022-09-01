@@ -82,12 +82,6 @@ func TrayIcon(pc *PowerControl) {
 		subMinutes := systray.AddMenuItem("Turn off after...", "Turn off after...")
 
 		var timer *time.Timer
-		stopTimer := func() {
-			if timer != nil && timer.Stop() {
-				timerItem.Hide()
-				subMinutes.Show()
-			}
-		}
 		onTimer := func() {
 			for _, powerType := range pc.types {
 				if powerType.state {
@@ -95,9 +89,13 @@ func TrayIcon(pc *PowerControl) {
 				}
 			}
 			syncMenu()
+			timerItem.Hide()
+			subMinutes.Show()
 		}
 		setTimer := func(minutes int) {
-			stopTimer()
+			if timer != nil {
+				timer.Stop()
+			}
 			duration := time.Duration(minutes) * time.Minute
 			ct := time.Now()
 			ct = ct.Add(duration)
@@ -109,6 +107,13 @@ func TrayIcon(pc *PowerControl) {
 			timerItem.SetTitle("Until " + ct.Format(format))
 			subMinutes.Hide()
 			timerItem.Show()
+		}
+		stopTimer := func() {
+			if timer != nil {
+				timer.Stop()
+				timerItem.Hide()
+				subMinutes.Show()
+			}
 		}
 
 		onMinutesClick := func(index int) {
