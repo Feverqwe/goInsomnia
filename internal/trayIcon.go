@@ -79,7 +79,7 @@ func TrayIcon(pc *PowerControl) {
 		timerItem := systray.AddMenuItem("", "")
 		timerItem.Hide()
 
-		subMinutes := systray.AddMenuItem("Turn off after...", "Turn off after...")
+		subMinutes := systray.AddMenuItem("Off after...", "Off after...")
 
 		var timer *time.Timer
 		onTimer := func() {
