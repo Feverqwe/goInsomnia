@@ -5,6 +5,7 @@ import (
 	"goInsomnia/assets"
 	"reflect"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -78,23 +79,22 @@ func TrayIcon(pc *PowerControl) {
 		timerItem := systray.AddMenuItem("", "")
 		timerItem.Hide()
 
-		subConfig := systray.AddMenuItem("Turn off after...", "Turn off after...")
+		subMinutes := systray.AddMenuItem("Turn off after...", "Turn off after...")
 
 		var timer *time.Timer
 		stopTimer := func() {
-			if timer != nil {
-				timer.Stop()
+			if timer != nil && timer.Stop() {
+				timerItem.Hide()
+				subMinutes.Show()
 			}
 		}
 		onTimer := func() {
-			for id, powerType := range pc.idType {
+			for _, powerType := range pc.types {
 				if powerType.state {
-					pc.setState(id, false)
+					pc.setState(powerType.id, false)
 				}
 			}
 			syncMenu()
-			timerItem.Hide()
-			subConfig.Show()
 		}
 		setTimer := func(minutes int) {
 			stopTimer()
@@ -102,28 +102,28 @@ func TrayIcon(pc *PowerControl) {
 			ct := time.Now()
 			ct = ct.Add(duration)
 			timer = time.AfterFunc(duration, onTimer)
-			timerItem.SetTitle("Until " + ct.Format("15:04"))
-		}
-
-		onTimerClick := func() {
-			stopTimer()
-			timerItem.Hide()
-			subConfig.Show()
+			format := "15:04"
+			if minutes > 24*60 {
+				format = "Jan 2 15:04"
+			}
+			timerItem.SetTitle("Until " + ct.Format(format))
+			subMinutes.Hide()
+			timerItem.Show()
 		}
 
 		onMinutesClick := func(index int) {
 			minutes := minutesPreset[index]
 			setTimer(minutes)
-			timerItem.Show()
-			subConfig.Hide()
 		}
 
 		for _, minutes := range minutesPreset {
 			title := formatMinutes(minutes)
-			mMinutes := subConfig.AddSubMenuItem(title, title)
+			mMinutes := subMinutes.AddSubMenuItem(title, title)
 			selectCase := reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mMinutes.ClickedCh)}
 			mMinutesChannels = append(mMinutesChannels, selectCase)
 		}
+
+		mSetMinutes := subMinutes.AddSubMenuItem("Set minutes", "Set minues")
 
 		systray.AddSeparator()
 
@@ -149,8 +149,19 @@ func TrayIcon(pc *PowerControl) {
 		go func() {
 			for {
 				select {
+				case <-mSetMinutes.ClickedCh:
+					minutesStr, err := ShowEntry("Set minutes", "Enter the number of minutes:", "60")
+					var minutes int
+					if err == nil {
+						minutes, err = strconv.Atoi(minutesStr)
+					}
+					if err != nil {
+						fmt.Println("Set minutes error", err)
+					} else {
+						setTimer(minutes)
+					}
 				case <-timerItem.ClickedCh:
-					onTimerClick()
+					stopTimer()
 				case <-mQuit.ClickedCh:
 					systray.Quit()
 				}

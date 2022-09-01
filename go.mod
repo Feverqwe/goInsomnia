@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/caseymrm/go-assertions v0.0.0-20180523040700-6ea0307b5bc5 // indirect
 	github.com/caseymrm/go-caffeinate v0.0.0-20180507205639-f1d20cbcba98
+	github.com/gabyx/githooks/githooks v1.1.1
 	github.com/getlantern/errors v1.0.3 // indirect
 	github.com/getlantern/golog v0.0.0-20211223150227-d4d95a44d873 // indirect
 	github.com/getlantern/hidden v0.0.0-20220104173330-f221c5a24770 // indirect
