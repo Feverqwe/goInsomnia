@@ -14,7 +14,7 @@ import (
 var icon []byte
 var disabledIcon []byte
 
-var minutesPreset = []int{5, 10, 15, 30, 60, 120, 240, 360, 480}
+var minutesPreset = []int{5, 10, 15, 30, 60, 120, 240, 360, 480, 600, 720}
 
 func TrayIcon(pc *PowerControl) {
 	if icon == nil {
