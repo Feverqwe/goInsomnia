@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"goInsomnia/assets"
+	"goInsomnia/internal/partTimer"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -81,7 +82,7 @@ func TrayIcon(pc *PowerControl) {
 
 		subMinutes := systray.AddMenuItem("Off after...", "Off after...")
 
-		var timer *time.Timer
+		var timer *partTimer.PartTimer
 		onTimer := func() {
 			for _, powerType := range pc.types {
 				if powerType.state {
@@ -99,7 +100,7 @@ func TrayIcon(pc *PowerControl) {
 			duration := time.Duration(minutes) * time.Minute
 			ct := time.Now()
 			ct = ct.Add(duration)
-			timer = time.AfterFunc(duration, onTimer)
+			timer = partTimer.AfterFunc(duration, onTimer)
 			format := "15:04"
 			if minutes > 24*60 {
 				format = "Jan 2 15:04"
